@@ -1,11 +1,12 @@
+
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>رای‌نو</title>
-    <link rel="icon" type="image/svg+xml" href="/newray/logo.svg" />
-    <link rel="manifest" href="/newray/manifest.json" />
+    <title>دستیار</title>
+    <link rel="icon" type="image/svg+xml" href="/Dastyar/logo.svg" />
+    <link rel="manifest" href="/Dastyar/manifest.json" />
     <meta name="theme-color" content="#800020" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -20,9 +21,9 @@
               sans: ['Vazirmatn', 'sans-serif'],
             },
             colors: {
-              primary: '#800020', 
+              primary: '#800020', // Sabanur Red-ish
               secondary: '#2c3e50',
-              accent: '#38bdf8', 
+              accent: '#38bdf8', // Cyan/Turquoise for progress
             }
           },
         },
@@ -31,14 +32,16 @@
     <style>
       body {
         font-family: 'Vazirmatn', sans-serif;
-        overscroll-behavior-y: none;
+        overscroll-behavior-y: none; /* Prevent pull-to-refresh on mobile */
       }
+      /* Hide scrollbar for Chrome, Safari and Opera */
       .no-scrollbar::-webkit-scrollbar {
         display: none;
       }
+      /* Hide scrollbar for IE, Edge and Firefox */
       .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
       }
     </style>
 
@@ -59,18 +62,18 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/newray/assets/index-BPG4etwL.js"></script>
-  <link rel="modulepreload" crossorigin href="/newray/assets/react-vendor-Bue8W7I3.js">
-  <link rel="modulepreload" crossorigin href="/newray/assets/ui-vendor-BSDZdq51.js">
-  <link rel="modulepreload" crossorigin href="/newray/assets/supabase-CRHRt2Ih.js">
-  <link rel="modulepreload" crossorigin href="/newray/assets/genai-DDZkw1qX.js">
+  <script type="module" crossorigin src="/Dastyar/assets/index-SmvIkDof.js"></script>
+  <link rel="modulepreload" crossorigin href="/Dastyar/assets/react-vendor-DhsXd5t7.js">
+  <link rel="modulepreload" crossorigin href="/Dastyar/assets/ui-vendor-BiQpuvzI.js">
+  <link rel="modulepreload" crossorigin href="/Dastyar/assets/supabase-Dx0atVpp.js">
+  <link rel="modulepreload" crossorigin href="/Dastyar/assets/genai-BCLNBOTF.js">
 </head>
   <body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 transition-colors duration-200">
     <div id="root"></div>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
+          navigator.serviceWorker.register('/sw.js')
             .then(registration => {
               console.log('SW registered: ', registration);
             })
@@ -80,5 +83,5 @@
         });
       }
     </script>
-</body>
+  </body>
 </html>
