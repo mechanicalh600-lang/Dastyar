@@ -4,7 +4,7 @@ import { User, UserRole } from '../types';
 import { APP_VERSION } from '../constants';
 import { Lock, User as UserIcon, Eye, EyeOff, LogIn, AlertCircle, Database, Copy, X, Check, Loader2, ShieldCheck, CheckCircle, HelpCircle } from 'lucide-react';
 import { Logo } from '../components/Logo';
-import { supabase } from '../supabaseClient';
+import { clearMuseumSession, setMuseumSession, supabase } from '../supabaseClient';
 import { DB_SETUP_SQL } from '../dbSchema';
 
 interface LoginProps {
@@ -41,11 +41,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const checkConnection = async () => {
     setConnectionStatus('checking');
     try {
-      const { data, error } = await supabase
-        .from('app_users')
-        .select('count', { count: 'exact', head: true });
+      const { data, error } = await supabase.rpc('museum_healthcheck');
 
-      if (error) throw error;
+      if (error || data !== true) throw error || new Error('Healthcheck failed');
       
       setConnectionStatus('connected');
       setConnectionMsg('ارتباط با سرور برقرار است');
@@ -61,7 +59,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       } else if (err?.message) {
           msg = err.message;
       } else {
-          // Fallback for object errors
           try {
               msg = JSON.stringify(err);
           } catch(e) {
@@ -79,83 +76,47 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       setTimeout(() => setCopied(false), 2000);
   };
 
-  // Hardcoded Admin for fallback
-  const adminUser: User = {
-    id: '1',
-    username: 'admin',
-    fullName: 'مدیر سیستم',
-    role: UserRole.ADMIN,
-    passwordHash: '12381',
-    isDefaultPassword: false 
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    clearMuseumSession();
 
-    // 1. Check Hardcoded Admin First
-    if (username.toLowerCase() === 'admin' && password === '12381') {
-      if (adminUser.isDefaultPassword) {
-        setIsResetMode(true);
-        setTempUser(adminUser);
-        setLoading(false);
-        return;
-      }
-      onLogin(adminUser);
-      setLoading(false);
-      return;
-    }
-
-    // 2. Check Database Users
     try {
-        const { data, error } = await supabase
-            .from('app_users')
-            .select(`
-                *,
-                personnel (
-                    full_name,
-                    personnel_code,
-                    profile_picture,
-                    unit
-                )
-            `)
-            .eq('username', username)
-            .single();
+        const { data, error } = await supabase.rpc('museum_login', {
+            p_username: username,
+            p_password: password,
+        });
 
-        if (error || !data) {
-            if (error && error.code !== 'PGRST116') {
-               console.error("Auth DB Error:", error);
-            }
+        const row = Array.isArray(data) ? data[0] : data;
+        if (error || !row?.session_token) {
             throw new Error('نام کاربری یا رمز عبور اشتباه است');
         }
 
-        if (data.password !== password) {
-             throw new Error('نام کاربری یا رمز عبور اشتباه است');
-        }
+        setMuseumSession(row.session_token);
 
         const dbUser: User = {
-            id: data.id,
-            username: data.username,
-            fullName: data.personnel?.full_name || data.username,
-            role: data.role as UserRole,
+            id: row.id,
+            username: row.username,
+            fullName: row.full_name || row.username,
+            role: row.role as UserRole,
             passwordHash: '***',
-            isDefaultPassword: data.is_default_password,
-            personnelCode: data.personnel?.personnel_code,
-            avatar: data.avatar || data.personnel?.profile_picture
+            isDefaultPassword: Boolean(row.is_default_password),
+            personnelCode: row.personnel_code || undefined,
+            avatar: row.avatar || undefined,
         };
 
         if (dbUser.isDefaultPassword) {
             setIsResetMode(true);
             setTempUser(dbUser);
-            setLoading(false);
             return;
         }
 
         onLogin(dbUser);
 
     } catch (err: any) {
-        console.warn('Login Failed:', err.message);
+        clearMuseumSession();
+        console.warn('Login Failed:', err?.message);
         setError('نام کاربری یا رمز عبور اشتباه است');
     } finally {
         setLoading(false);
@@ -165,7 +126,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const handlePasswordChange = async (e: React.FormEvent) => {
       e.preventDefault();
       
-      // Validation
       if (resetNewPass !== resetConfirmPass) {
           setError('تکرار رمز عبور مطابقت ندارد');
           return;
@@ -182,31 +142,18 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       setLoading(true);
       setError('');
 
-      if (tempUser?.username === 'admin') {
-          setResetSuccess(true);
-          setTimeout(() => {
-             setIsResetMode(false);
-             setResetSuccess(false);
-             setResetCurrentPass('');
-             setResetNewPass('');
-             setResetConfirmPass('');
-             setPassword(''); 
-          }, 2000);
-          setLoading(false);
-      } else if (tempUser) {
+      if (tempUser) {
           try {
-              const { error } = await supabase
-                  .from('app_users')
-                  .update({ 
-                      password: resetNewPass, 
-                      is_default_password: false 
-                  })
-                  .eq('id', tempUser.id);
+              const { data, error } = await supabase.rpc('museum_change_password', {
+                  p_current_password: resetCurrentPass,
+                  p_new_password: resetNewPass,
+              });
 
-              if (error) throw error;
+              if (error || data !== true) throw error || new Error('Password change rejected');
 
               setResetSuccess(true);
               setTimeout(() => {
+                  clearMuseumSession();
                   setIsResetMode(false);
                   setResetSuccess(false);
                   setResetCurrentPass('');
@@ -216,7 +163,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
               }, 2000);
 
           } catch (err: any) {
-              setError('خطا در تغییر رمز عبور: ' + err.message);
+              setError('خطا در تغییر رمز عبور: ' + (err?.message || 'خطای نامشخص'));
           } finally {
               setLoading(false);
           }
