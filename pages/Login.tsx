@@ -242,7 +242,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                                     <div className="relative">
                                         <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                         <input
-                                            type="text" 
+                                            type="password" 
                                             placeholder="رمز فعلی..."
                                             value={resetCurrentPass}
                                             onChange={(e) => setResetCurrentPass(e.target.value)}
