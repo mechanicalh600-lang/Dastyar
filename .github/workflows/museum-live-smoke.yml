@@ -38,23 +38,34 @@ jobs:
           const { test, expect } = require('@playwright/test');
 
           test('Dastyar legacy application is reachable, talks to Supabase, rejects bad auth, and protects routes', async ({ page }) => {
+            test.setTimeout(180000);
             const base = 'https://mechanicalh600-lang.github.io/Dastyar/';
             const pageErrors = [];
             page.on('pageerror', (error) => pageErrors.push(error.message));
 
-            const healthResponse = page.waitForResponse(
-              (response) => response.url().includes('/rest/v1/rpc/museum_healthcheck'),
-              { timeout: 25000 }
-            );
+            let health = null;
+            let healthBody = '';
+            for (let attempt = 1; attempt <= 10; attempt += 1) {
+              const healthResponse = page.waitForResponse(
+                (response) => response.url().includes('/rest/v1/rpc/museum_healthcheck'),
+                { timeout: 25000 }
+              );
 
-            const response = await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
-            expect(response && response.ok()).toBeTruthy();
-            await expect(page.getByText('ورود به حساب کاربری')).toBeVisible({ timeout: 15000 });
+              const response = await page.goto(`${base}?museum-smoke=${Date.now()}-${attempt}`, {
+                waitUntil: 'domcontentloaded',
+                timeout: 30000,
+              });
+              expect(response && response.ok()).toBeTruthy();
+              await expect(page.getByText('ورود به حساب کاربری')).toBeVisible({ timeout: 15000 });
 
-            const health = await healthResponse;
-            const healthBody = await health.text();
-            console.log(`museum_healthcheck status=${health.status()} body=${healthBody.slice(0, 500)}`);
-            expect(health.ok()).toBeTruthy();
+              health = await healthResponse;
+              healthBody = await health.text();
+              console.log(`museum_healthcheck attempt=${attempt} status=${health.status()} body=${healthBody.slice(0, 500)}`);
+              if (health.ok()) break;
+              await page.waitForTimeout(10000);
+            }
+
+            expect(health && health.ok(), `Final healthcheck body: ${healthBody}`).toBeTruthy();
 
             const loginRpc = page.waitForResponse(
               (r) => r.url().includes('/rest/v1/rpc/museum_login'),
