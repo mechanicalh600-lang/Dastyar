@@ -7,8 +7,7 @@ import { ChatAssistant } from './components/ChatAssistant';
 import { SplashScreen } from './components/SplashScreen'; 
 import { User, UserRole } from './types';
 import { getShamsiDate, getTime, getPublicIp } from './utils';
-import { supabase } from './supabaseClient';
-import { Loader2 } from 'lucide-react';
+import { getMuseumSession, logoutMuseumSession, restoreMuseumSession, supabase } from './supabaseClient';
 
 // Static Imports to prevent dynamic import errors in some environments
 import { Login } from './pages/Login';
@@ -41,12 +40,20 @@ const App: React.FC = () => {
   // Global State
   const [user, setUser] = useState<User | null>(() => {
     try {
+      // A cached UI user is only trusted when the museum session token also exists.
+      if (!getMuseumSession()) {
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('lastActivityTime');
+        return null;
+      }
+
       // Check for session expiry on initial load (e.g. if browser was closed)
       const lastActivity = localStorage.getItem('lastActivityTime');
       if (lastActivity) {
         const diff = Date.now() - parseInt(lastActivity, 10);
         if (diff > INACTIVITY_LIMIT) {
           localStorage.removeItem('currentUser');
+          localStorage.removeItem('lastActivityTime');
           return null;
         }
       }
@@ -79,6 +86,45 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Revalidate any restored browser state against the server-side museum session.
+  useEffect(() => {
+    let cancelled = false;
+
+    const validateRestoredSession = async () => {
+      if (!user) return;
+      const restored = await restoreMuseumSession();
+      if (cancelled) return;
+
+      if (!restored) {
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('lastActivityTime');
+        setUser(null);
+        return;
+      }
+
+      const restoredUser: User = {
+        id: restored.id,
+        username: restored.username,
+        fullName: restored.full_name || restored.username,
+        role: restored.role as UserRole,
+        passwordHash: '***',
+        isDefaultPassword: Boolean(restored.is_default_password),
+        personnelCode: restored.personnel_code || undefined,
+        avatar: restored.avatar || undefined,
+      };
+
+      setUser(restoredUser);
+      localStorage.setItem('currentUser', JSON.stringify(restoredUser));
+    };
+
+    void validateRestoredSession();
+    return () => {
+      cancelled = true;
+    };
+    // Only validate the browser-restored state once at application bootstrap.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // --- Auto Logout Logic ---
   const handleLogout = useCallback(async (isAuto = false) => {
     if (user) {
@@ -98,6 +144,9 @@ const App: React.FC = () => {
         } catch (error) {
             console.error("Logout logging failed:", error);
         }
+
+        // Revoke the server-side museum session before removing browser state.
+        await logoutMuseumSession();
         
         // Preserve settings and logs before clearing cache
         const theme = localStorage.getItem('theme');
@@ -109,6 +158,8 @@ const App: React.FC = () => {
         // Restore preferences
         if (theme) localStorage.setItem('theme', theme);
         if (snow) localStorage.setItem('snowMode', snow);
+    } else {
+        await logoutMuseumSession();
     }
     
     setUser(null);
