@@ -34,8 +34,10 @@ function getEnv(key: string): string | undefined {
   return undefined;
 }
 
-// Runtime configuration must come from environment variables only.
-// No live Supabase URL or publishable/anon key is stored in source control.
+// Browser configuration is injected by the build pipeline. The Supabase URL
+// and publishable key are intentionally public client configuration and may be
+// present in the deployment workflow/bundle. Privileged or service-role keys
+// must never be stored in source control or shipped to the browser.
 export const supabaseUrl = getEnv('VITE_SUPABASE_URL') || '';
 export const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY') || '';
 
