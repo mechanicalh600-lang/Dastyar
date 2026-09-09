@@ -1,12 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// --- 1. Define Fallbacks (Default values to prevent crashes) ---
-// These are used if environment variables are missing or undefined.
-// Please update these with your actual Supabase credentials if .env is failing.
-const DEFAULT_URL = "https://krgznynrljnvxwhvsdxj.supabase.co";
-const DEFAULT_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyZ3pueW5ybGpudnh3aHZzZHhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzMzI3MzMsImV4cCI6MjA4MTkwODczM30.OUjiO0YpbSHSfD9gQ6T6RugFNdGPvJPhMzTQBkbgI5c";
-
 export const MUSEUM_SESSION_KEY = 'newray_museum_session';
 
 export const setMuseumSession = (token: string) => {
@@ -26,15 +20,13 @@ export const getMuseumSession = (): string | null => {
   return window.localStorage.getItem(MUSEUM_SESSION_KEY);
 };
 
-// --- 2. Safe Environment Variable Access ---
-// This function ensures we never crash even if import.meta.env is undefined.
 function getEnv(key: string): string | undefined {
   try {
-    // Check if 'import.meta' exists and has 'env' property before accessing
-    // @ts-ignore
+    // @ts-ignore - Vite injects import.meta.env at build time.
     if (typeof import.meta !== 'undefined' && import.meta && import.meta.env) {
       // @ts-ignore
-      return import.meta.env[key];
+      const value = import.meta.env[key];
+      return typeof value === 'string' && value.trim() ? value.trim() : undefined;
     }
   } catch (err) {
     console.warn(`Error accessing environment variable ${key}:`, err);
@@ -42,17 +34,13 @@ function getEnv(key: string): string | undefined {
   return undefined;
 }
 
-// --- 3. Resolve Credentials ---
-const envUrl = getEnv('VITE_SUPABASE_URL');
-const envKey = getEnv('VITE_SUPABASE_ANON_KEY');
+// Runtime configuration must come from environment variables only.
+// No live Supabase URL or publishable/anon key is stored in source control.
+export const supabaseUrl = getEnv('VITE_SUPABASE_URL') || '';
+export const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY') || '';
 
-// Priority: Environment Variable > Hardcoded Fallback
-const supabaseUrl = envUrl || DEFAULT_URL;
-const supabaseKey = envKey || DEFAULT_KEY;
-
-// --- 4. Initialize Client ---
-if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('placeholder')) {
-  console.warn("Supabase Client Warning: Missing or invalid URL/Key. Connection may fail.");
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Supabase configuration is missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
 }
 
 const museumFetch: typeof fetch = (input: RequestInfo | URL, init?: RequestInit) => {
@@ -63,16 +51,18 @@ const museumFetch: typeof fetch = (input: RequestInfo | URL, init?: RequestInit)
   return fetch(input, { ...options, headers });
 };
 
+// Use non-live placeholders only so the historical UI can render a controlled
+// connection error instead of crashing when configuration has not been supplied yet.
 export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseKey || 'placeholder',
+  supabaseUrl || 'https://missing-config.invalid',
+  supabaseAnonKey || 'missing-config',
   {
     global: { fetch: museumFetch },
   }
 );
 
 export const restoreMuseumSession = async () => {
-  if (!getMuseumSession()) return null;
+  if (!getMuseumSession() || !supabaseUrl || !supabaseAnonKey) return null;
   try {
     const { data, error } = await supabase.rpc('museum_current_user');
     const row = Array.isArray(data) ? data[0] : data;
@@ -88,7 +78,10 @@ export const restoreMuseumSession = async () => {
 };
 
 export const logoutMuseumSession = async () => {
-  if (!getMuseumSession()) return;
+  if (!getMuseumSession() || !supabaseUrl || !supabaseAnonKey) {
+    clearMuseumSession();
+    return;
+  }
   try {
     await supabase.rpc('museum_logout');
   } catch (error) {
