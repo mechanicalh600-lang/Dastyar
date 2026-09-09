@@ -4,20 +4,17 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '17 3 * * 1'
-  push:
+  workflow_run:
+    workflows: ['Deploy GitHub Pages']
+    types: [completed]
     branches: [main]
-    paths:
-      - '.github/workflows/museum-live-smoke.yml'
-      - 'pages/Login.tsx'
-      - 'supabaseClient.ts'
-      - 'App.tsx'
-      - 'supabase/migrations/**'
 
 permissions:
   contents: read
 
 jobs:
   live-smoke:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -40,7 +37,7 @@ jobs:
           cat > museum.spec.cjs <<'EOF'
           const { test, expect } = require('@playwright/test');
 
-          test('Dastyar museum is reachable, talks to Supabase, rejects bad auth, and protects routes', async ({ page }) => {
+          test('Dastyar legacy application is reachable, talks to Supabase, rejects bad auth, and protects routes', async ({ page }) => {
             const base = 'https://mechanicalh600-lang.github.io/Dastyar/';
             const pageErrors = [];
             page.on('pageerror', (error) => pageErrors.push(error.message));
