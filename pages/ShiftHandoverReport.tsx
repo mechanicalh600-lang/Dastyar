@@ -384,7 +384,7 @@ export const ShiftReportView: React.FC<ShiftReportViewProps> = ({ reportData, ad
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={barChartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                        <XAxis dataKey="time" tick={{fontSize: 8, angle: -45, textAnchor: 'end'}} interval={0} height={30} tickMargin={5} />
+                                        <XAxis dataKey="time" tick={({fontSize: 8, angle: -45, textAnchor: 'end'} as any)} interval={0} height={30} tickMargin={5} />
                                         <YAxis tick={{fontSize: 8}} width={30} tickMargin={2} />
                                         <Tooltip contentStyle={{fontSize: '10px'}} />
                                         <Legend iconSize={6} wrapperStyle={{fontSize: '8px', paddingTop: '2px'}} />
@@ -417,7 +417,7 @@ export const ShiftReportView: React.FC<ShiftReportViewProps> = ({ reportData, ad
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={barChartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="time" tick={{fontSize: 9, angle: -45, textAnchor: 'end'}} height={40} />
+                                <XAxis dataKey="time" tick={({fontSize: 9, angle: -45, textAnchor: 'end'} as any)} height={40} />
                                 <YAxis tick={{fontSize: 9}} width={30} />
                                 <Tooltip contentStyle={{fontSize: '10px'}} />
                                 <Legend iconSize={8} wrapperStyle={{fontSize: '10px'}} />
