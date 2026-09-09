@@ -26,6 +26,10 @@ jobs:
       - name: Install exact dependencies
         run: npm ci
       - name: Build historical app
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          VITE_GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: npm run build
       - name: Verify dependency audit
         run: npm audit --audit-level=high
