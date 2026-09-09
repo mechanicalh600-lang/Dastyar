@@ -11,6 +11,7 @@ on:
       - 'pages/Login.tsx'
       - 'supabaseClient.ts'
       - 'App.tsx'
+      - 'supabase/migrations/**'
 
 permissions:
   contents: read
