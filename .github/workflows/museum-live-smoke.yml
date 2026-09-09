@@ -1,0 +1,77 @@
+name: Museum live smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 1'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/museum-live-smoke.yml'
+      - 'pages/Login.tsx'
+      - 'supabaseClient.ts'
+      - 'App.tsx'
+
+permissions:
+  contents: read
+
+jobs:
+  live-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install browser test runtime
+        run: |
+          mkdir -p "$RUNNER_TEMP/museum-smoke"
+          cd "$RUNNER_TEMP/museum-smoke"
+          npm init -y >/dev/null 2>&1
+          npm install --save-dev @playwright/test@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Run live browser smoke
+        working-directory: ${{ runner.temp }}/museum-smoke
+        run: |
+          cat > museum.spec.cjs <<'EOF'
+          const { test, expect } = require('@playwright/test');
+
+          test('Dastyar museum is reachable, talks to Supabase, rejects bad auth, and protects routes', async ({ page }) => {
+            const base = 'https://mechanicalh600-lang.github.io/Dastyar/';
+            const pageErrors = [];
+            page.on('pageerror', (error) => pageErrors.push(error.message));
+
+            const healthResponse = page.waitForResponse(
+              (response) => response.url().includes('/rest/v1/rpc/museum_healthcheck'),
+              { timeout: 25000 }
+            );
+
+            const response = await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            expect(response && response.ok()).toBeTruthy();
+            await expect(page.getByText('ورود به حساب کاربری')).toBeVisible({ timeout: 15000 });
+
+            const health = await healthResponse;
+            expect(health.ok()).toBeTruthy();
+
+            const loginRpc = page.waitForResponse(
+              (r) => r.url().includes('/rest/v1/rpc/museum_login'),
+              { timeout: 15000 }
+            );
+            await page.locator('input[type="text"]').first().fill('__museum_invalid_user__');
+            await page.locator('input[type="password"]').first().fill('invalid-password-for-smoke-test');
+            await page.locator('form button[type="submit"]').click();
+            const loginResponse = await loginRpc;
+            expect(loginResponse.ok()).toBeTruthy();
+            await expect(page.getByText('نام کاربری یا رمز عبور اشتباه است')).toBeVisible({ timeout: 10000 });
+
+            await page.evaluate(() => { window.location.hash = '#/work-orders/new'; });
+            await expect.poll(() => page.url()).toContain('#/login');
+
+            expect(pageErrors, `Browser page errors: ${pageErrors.join(' | ')}`).toEqual([]);
+          });
+          EOF
+
+          npx playwright test museum.spec.cjs --reporter=line --workers=1
