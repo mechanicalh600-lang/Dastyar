@@ -70,3 +70,30 @@ export const supabase = createClient(
     global: { fetch: museumFetch },
   }
 );
+
+export const restoreMuseumSession = async () => {
+  if (!getMuseumSession()) return null;
+  try {
+    const { data, error } = await supabase.rpc('museum_current_user');
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row?.id) {
+      clearMuseumSession();
+      return null;
+    }
+    return row;
+  } catch {
+    clearMuseumSession();
+    return null;
+  }
+};
+
+export const logoutMuseumSession = async () => {
+  if (!getMuseumSession()) return;
+  try {
+    await supabase.rpc('museum_logout');
+  } catch (error) {
+    console.warn('Museum session logout failed:', error);
+  } finally {
+    clearMuseumSession();
+  }
+};
