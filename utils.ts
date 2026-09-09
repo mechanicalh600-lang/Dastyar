@@ -108,7 +108,7 @@ export const compareShamsiDateTime = (d1: string, t1: string, d2: string, t2: st
   return 0;
 };
 
-export const calculateDurationMinutes = (d1: string, t1: string, d2: string, t2: string): number => {
+export const calculateDurationMinutes = (d1: string, t1: string, d2: string, t2: string,): number => {
   const date1 = parseShamsiDate(d1);
   const date2 = parseShamsiDate(d2);
   
@@ -140,17 +140,9 @@ export const isFutureDate = (shamsiDate: string): boolean => {
   return date.getTime() > now.getTime();
 }
 
-// Fetch real public IP
-export const getPublicIp = async (): Promise<string> => {
-  try {
-    const response = await fetch('https://api.ipify.org?format=json');
-    if (!response.ok) throw new Error('Network response was not ok');
-    const data = await response.json();
-    return data.ip;
-  } catch (error) {
-    console.warn('Could not fetch public IP:', error);
-    return "Unknown / Offline";
-  }
-};
+// Museum runtime must not depend on a third-party IP-discovery endpoint.
+// Client IP collection is intentionally omitted; the historical log remains
+// usable with a neutral marker even when external services are unavailable.
+export const getPublicIp = async (): Promise<string> => "Not collected";
 
 export const mockIp = "192.168.1.105"; // Fallback
