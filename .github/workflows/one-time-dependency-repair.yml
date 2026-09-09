@@ -19,10 +19,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Create deterministic lockfile
-        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-      - name: Apply non-breaking dependency security fixes
-        run: npm audit fix --package-lock-only
+      - name: Upgrade vulnerable runtime dependency
+        run: npm install react-router-dom@7.18.3 --save-exact
+      - name: Upgrade vulnerable build toolchain
+        run: npm install --save-dev --save-exact vite@8.2.2 @vitejs/plugin-react@latest
+      - name: Apply remaining non-breaking security fixes
+        run: npm audit fix
       - name: Install exact dependency graph
         run: npm ci
       - name: Verify production build
@@ -31,12 +33,12 @@ jobs:
         run: npm audit --audit-level=high
       - name: Commit dependency state
         run: |
-          if git diff --quiet; then
-            echo "No dependency changes needed"
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json
+          if git diff --cached --quiet; then
+            echo "No dependency changes needed"
+            exit 0
+          fi
           git commit -m "security: lock and repair dependency graph"
           git push origin HEAD:museum-hardening-phase2-20260909
