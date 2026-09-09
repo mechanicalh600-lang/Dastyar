@@ -4,9 +4,9 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, (process as any).cwd(), '');
-  // Historical compatibility: the current museum deployment still falls back to
-  // the original client-side AI key until that integration can be rotated/proxied.
-  const apiKey = env.VITE_GOOGLE_API_KEY || "AIzaSyBbrl8wKH28MYJn0yx2AZO6fqQUyhlm-KI";
+  // The legacy AI integration is enabled only when a key is explicitly supplied.
+  // No live API key is stored in source control.
+  const apiKey = env.VITE_GOOGLE_API_KEY || '';
   
   return {
     plugins: [react()],
