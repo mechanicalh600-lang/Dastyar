@@ -33,7 +33,7 @@ jobs:
         # intentionally public; privileged/service-role keys must never be added here.
         env:
           VITE_SUPABASE_URL: https://krgznynrljnvxwhvsdxj.supabase.co
-          VITE_SUPABASE_ANON_KEY: sb_publishable_Y2K2xmx-8VMG0_daOc564w_ZHgRkvt2
+          VITE_SUPABASE_ANON_KEY: sb_publishable_Y2K2xmx-8VMG0xdaOc564w_ZHgRkvt2
         run: npm run build
 
       - name: Verify dependency audit
