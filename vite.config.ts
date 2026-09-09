@@ -4,7 +4,8 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, (process as any).cwd(), '');
-  // استفاده از کلید ارائه شده توسط کاربر
+  // Historical compatibility: the current museum deployment still falls back to
+  // the original client-side AI key until that integration can be rotated/proxied.
   const apiKey = env.VITE_GOOGLE_API_KEY || "AIzaSyBbrl8wKH28MYJn0yx2AZO6fqQUyhlm-KI";
   
   return {
@@ -17,11 +18,22 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 1000,
       rollupOptions: {
         output: {
-          manualChunks: {
-            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            'ui-vendor': ['lucide-react', 'recharts'],
-            'supabase': ['@supabase/supabase-js'],
-            'genai': ['@google/genai']
+          // Vite 8/Rolldown requires the function form. This preserves the historical
+          // bundle grouping without changing application markup, styling, or behavior.
+          manualChunks(id: string) {
+            if (!id.includes('node_modules')) return;
+            if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/react-router') || id.includes('\\react\\') || id.includes('\\react-dom\\') || id.includes('\\react-router')) {
+              return 'react-vendor';
+            }
+            if (id.includes('/lucide-react/') || id.includes('/recharts/') || id.includes('\\lucide-react\\') || id.includes('\\recharts\\')) {
+              return 'ui-vendor';
+            }
+            if (id.includes('/@supabase/') || id.includes('\\@supabase\\')) {
+              return 'supabase';
+            }
+            if (id.includes('/@google/genai/') || id.includes('\\@google\\genai\\')) {
+              return 'genai';
+            }
           }
         }
       }
