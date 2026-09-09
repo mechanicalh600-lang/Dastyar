@@ -52,6 +52,8 @@ jobs:
             await expect(page.getByText('ورود به حساب کاربری')).toBeVisible({ timeout: 15000 });
 
             const health = await healthResponse;
+            const healthBody = await health.text();
+            console.log(`museum_healthcheck status=${health.status()} body=${healthBody.slice(0, 500)}`);
             expect(health.ok()).toBeTruthy();
 
             const loginRpc = page.waitForResponse(
