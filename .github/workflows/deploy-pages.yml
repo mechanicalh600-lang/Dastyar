@@ -18,21 +18,36 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate required runtime configuration
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Dastyar deployment requires SUPABASE_URL and SUPABASE_ANON_KEY repository secrets. Refusing to publish a disconnected museum application."
+            exit 1
+          fi
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
+
       - name: Install exact dependencies
         run: npm ci
+
       - name: Build historical app
         env:
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           VITE_GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: npm run build
+
       - name: Verify dependency audit
         run: npm audit --audit-level=high
+
       - name: Publish dist to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
