@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [museum-hardening-phase2-20260909]
+    branches: [main, museum-hardening-phase2-20260909]
 
 permissions:
   contents: read
